@@ -283,6 +283,10 @@ export class Quest {
     return this.walletPromise;
   }
 
+  async parseReward(txHash: string) {
+    return parseQuestReward(this.connection, txHash);
+  }
+
   async answer(
     answer: string,
     options?: {
@@ -294,7 +298,7 @@ export class Quest {
     },
   ): Promise<AnswerResult> {
     const proveResult = await this.prove(answer, { snapshot: options?.snapshot });
-    if (!proveResult.success) {
+    if (proveResult.success === false) {
       return proveResult;
     }
 

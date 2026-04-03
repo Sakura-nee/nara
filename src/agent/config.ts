@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 
 const baseURL = "https://api.fireworks.ai/inference/v1";
-const BEARER_TOKEN = "fw_JLnasdLqQ6SDoBQe6Lgtfw";
+const BEARER_TOKEN = "[CHANGE APIKEY HERRE]";
 export const MODEL = "accounts/fireworks/routers/kimi-k2p5-turbo";
 
 export const AGENT_CONFIG = {

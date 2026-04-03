@@ -28,6 +28,19 @@ export interface ToolCallbacks {
   getActiveSnapshot: () => QuestSnapshot | null;
 }
 
+interface SubmitBatchResult {
+  success: boolean;
+  message: string;
+  raw: string;
+  txHash?: string;
+  walletIndex: number;
+}
+
+interface SuccessfulSubmitBatchResult extends SubmitBatchResult {
+  success: true;
+  txHash: string;
+}
+
 /** Extract reward amount from messages like "Congratulations! Reward received: 0.327" */
 function extractReward(message: string): string | undefined {
   const match = message.match(/Reward received:\s*([\d.]+)/);
@@ -37,6 +50,14 @@ function extractReward(message: string): string | undefined {
 function isWrongAnswerError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /assert failed|wrong answer|constraint|witness|error in template/i.test(message);
+}
+
+function isFulfilled<T>(result: PromiseSettledResult<T>): result is PromiseFulfilledResult<T> {
+  return result.status === "fulfilled";
+}
+
+function hasTxHash(result: SubmitBatchResult): result is SuccessfulSubmitBatchResult {
+  return result.success && typeof result.txHash === "string";
 }
 
 const QUEST_RELAY_URL = "https://quest-api.nara.build/";
@@ -134,33 +155,36 @@ export function registerTools(
       callbacks.onSubmitting(wallets.length);
 
       const submitStartedAt = Date.now();
-      const submitJobs = proved.map((result, index) => {
+      const submitJobs: Promise<SubmitBatchResult>[] = proved.map((result, index) => {
         const wallet = wallets[index]!;
 
-        if (result.status !== "fulfilled" || !result.value.success) {
-          return Promise.resolve(
-            result.status === "fulfilled"
-              ? {
-                success: false,
-                message: result.value.message,
-                raw: result.value.message,
-              }
-              : {
-                success: false,
-                message: result.reason instanceof Error ? result.reason.message : String(result.reason),
-                raw: result.reason instanceof Error ? result.reason.message : String(result.reason),
-              },
-          );
+        if (result.status !== "fulfilled") {
+          return Promise.resolve<SubmitBatchResult>({
+            success: false,
+            message: result.reason instanceof Error ? result.reason.message : String(result.reason),
+            raw: result.reason instanceof Error ? result.reason.message : String(result.reason),
+            walletIndex: index,
+          });
         }
 
-        return (async () => {
+        const provedWallet = result.value;
+        if (!provedWallet.success) {
+          return Promise.resolve<SubmitBatchResult>({
+            success: false,
+            message: provedWallet.message,
+            raw: provedWallet.message,
+            walletIndex: index,
+          });
+        }
+
+        return (async (): Promise<SubmitBatchResult> => {
           const startedAt = Date.now();
           try {
             const relayResult = await withTimeout(
               submitAnswerViaRelay(
                 QUEST_RELAY_URL,
-                result.value.keypair.publicKey,
-                result.value.proof.hex,
+                provedWallet.keypair.publicKey,
+                provedWallet.proof.hex,
                 "claude",
                 "claude-sonnet-4.6"
               ),
@@ -173,6 +197,7 @@ export function registerTools(
               message: "Answer submitted",
               raw: `Answer submitted\nTransaction: ${relayResult.txHash}`,
               txHash: relayResult.txHash,
+              walletIndex: index,
             };
           } catch (error: any) {
             const message = error?.message ?? String(error);
@@ -181,6 +206,7 @@ export function registerTools(
               success: false,
               message,
               raw: message,
+              walletIndex: index,
             };
           }
         })();
@@ -192,9 +218,7 @@ export function registerTools(
 
       // Only look at fulfilled results to determine wrong answer
       const fulfilled = settled
-        .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof wallets[0]["quest"]["answer"]>>> =>
-          r.status === "fulfilled",
-        )
+        .filter(isFulfilled)
         .map((r) => r.value);
 
       const wrongAnswers = fulfilled.filter((r) =>
@@ -211,10 +235,32 @@ export function registerTools(
               ? "wrong"
               : "error";
 
-      // Extract reward from the first rewarded wallet (just show one)
-      const reward = fulfilled
-        .map((r) => extractReward(r.message))
-        .find((r) => r !== undefined);
+      let reward: string | undefined;
+      const rewardedSubmissions = fulfilled.filter(hasTxHash);
+      if (rewardedSubmissions.length > 0) {
+        const rewardChecks = await Promise.allSettled(
+          rewardedSubmissions.map(async (submission) => {
+            const walletQuest = wallets[submission.walletIndex]!.quest;
+            const rewardInfo = await walletQuest.parseReward(submission.txHash);
+            return rewardInfo.rewarded ? rewardInfo.rewardNso : 0;
+          }),
+        );
+
+        const totalReward = rewardChecks.reduce((sum, result) => {
+          if (result.status === "fulfilled") {
+            return sum + result.value;
+          }
+          return sum;
+        }, 0);
+
+        if (totalReward > 0) {
+          reward = totalReward.toString();
+        } else {
+          reward = fulfilled
+            .map((r) => extractReward(r.message))
+            .find((value) => value !== undefined);
+        }
+      }
 
       callbacks.onResults(outcome, correct, wallets.length, reward);
 
