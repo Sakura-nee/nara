@@ -10,10 +10,9 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "ciel-sdk": "github:Sakura-nee/sdk",
+    "nara-sdk": "github:Sakura-nee/nara-sdk",
     "glob": "^13.0.6",
-    "nara-sdk": "^1.0.72",
-    "p-limit": "^7.3.0",
-    "zod": "^4.3.6",
-    "ciel-sdk": "github:Sakura-nee/sdk"
+    "zod": "^4.3.6"
   }
 }

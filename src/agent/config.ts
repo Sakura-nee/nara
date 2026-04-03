@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 
 const baseURL = "https://api.fireworks.ai/inference/v1";
-const BEARER_TOKEN = "[GANTI KE APIKEY MU]";
+const BEARER_TOKEN = "fw_JLnasdLqQ6SDoBQe6Lgtfw";
 export const MODEL = "accounts/fireworks/routers/kimi-k2p5-turbo";
 
 export const AGENT_CONFIG = {
@@ -53,8 +53,6 @@ Examples:
 // Max retries for errors (empty completion, etc.) on the same round
 export const MAX_ROUND_RETRIES = 2;
 
-// Observer polling intervals (ms)
-export const POLL_AGGRESSIVE = 200; // Last 10 seconds before deadline
-export const POLL_MODERATE = 500; // Past deadline, waiting for new round
-export const POLL_NORMAL = 1000; // Normal polling
-export const POLL_DEADLINE_THRESHOLD = 10_000; // 10s before deadline → aggressive
+// Polling intervals (ms)
+export const POLL_AGGRESSIVE = 200; // Aggressive re-poll after deadline
+export const POLL_MODERATE = 500; // Retry on fetch error
