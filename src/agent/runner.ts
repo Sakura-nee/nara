@@ -12,7 +12,8 @@ import {
   SYSTEM_PROMPT,
   MAX_ROUND_RETRIES,
   POLL_MODERATE,
-} from "./config.ts";
+  DELAY_WRONG_ANSWER_MS,
+} from "../../config.ts";
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -312,7 +313,7 @@ export async function startAgent(options?: {
       // Wrong answer retry — keep same snapshot, don't re-fetch
       if (lastToolOutcome === "wrong" && roundRetries < MAX_ROUND_RETRIES) {
         tui.addLog(`Wrong answer, retrying with same quest...`, fg.red);
-        await sleep(200);
+        await sleep(DELAY_WRONG_ANSWER_MS);
         // Refresh snapshot in case quest state changed (deadline, slots, etc)
         try {
           const fresh = await fetchQuest();

@@ -3,8 +3,17 @@
 // ─────────────────────────────────────────────────────────────
 
 const baseURL = "https://api.fireworks.ai/inference/v1";
-const BEARER_TOKEN = "[CHANGE APIKEY HERRE]";
+const BEARER_TOKEN = "[REPLACE_WITH_YOUR_FIREWORKS_API_KEY]";
 export const MODEL = "accounts/fireworks/routers/kimi-k2p5-turbo";
+
+// AGENT
+export const AGENT = "claude";
+export const AGENT_MODEL_IDENTIFIER = MODEL.split("/").pop() || "kimi-k2p5-turbo";
+
+//
+export const QUEST_RELAY_URL = "https://quest-api.nara.build/";
+export const RELAY_SUBMIT_TIMEOUT_MS = 22_000;
+export const DELAY_WRONG_ANSWER_MS = 1_000;
 
 export const AGENT_CONFIG = {
   baseURL,

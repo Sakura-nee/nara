@@ -5,6 +5,7 @@
 import type { ToolRegistry } from "ciel-sdk";
 import type { Quest, QuestSnapshot } from "../quest.ts";
 import { generateProof, submitAnswerViaRelay } from "nara-sdk";
+import { AGENT, AGENT_MODEL_IDENTIFIER, QUEST_RELAY_URL, RELAY_SUBMIT_TIMEOUT_MS } from "../../config.ts";
 import { z } from "zod";
 
 export interface WalletQuest {
@@ -59,9 +60,6 @@ function isFulfilled<T>(result: PromiseSettledResult<T>): result is PromiseFulfi
 function hasTxHash(result: SubmitBatchResult): result is SuccessfulSubmitBatchResult {
   return result.success && typeof result.txHash === "string";
 }
-
-const QUEST_RELAY_URL = "https://quest-api.nara.build/";
-const RELAY_SUBMIT_TIMEOUT_MS = 8_000;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -185,8 +183,8 @@ export function registerTools(
                 QUEST_RELAY_URL,
                 provedWallet.keypair.publicKey,
                 provedWallet.proof.hex,
-                "claude",
-                "claude-sonnet-4.6"
+                AGENT,
+                AGENT_MODEL_IDENTIFIER,
               ),
               RELAY_SUBMIT_TIMEOUT_MS,
               `Relay submit for ${wallet.label}`,
